@@ -9,16 +9,26 @@ The reference installation used `Control_DX11.exe` file version `0.0.517.915`. C
 ## Install
 
 1. Close Control.
-2. Open PowerShell in this folder.
-3. Run the following command. Replace the example path with the folder that contains `Control_DX11.exe`.
+2. Download and extract the ZIP. Do not run the installer from inside the ZIP.
+3. Find `Control_DX11.exe` in the Control game folder.
+4. Drag `Control_DX11.exe` onto **Control Fog Fix.bat**.
+5. Launch Control in DirectX 11.
 
-   ```powershell
-   powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\ControlFogPatch.ps1 -GameFolder "D:\Games\Control"
-   ```
+You can also drag the whole Control game folder onto the launcher. Double-click the launcher instead to install using a folder picker, check the installation, or restore the original shaders. It also finds common Steam, Epic, and GOG locations automatically. If Windows SmartScreen appears, choose **More info**, review the publisher/file details, and choose **Run anyway** only if you downloaded the files from this repository.
 
-4. Launch Control in DirectX 11.
+### PowerShell installation
 
-The command sets the execution policy for this PowerShell process. PowerShell 7 users can replace `powershell.exe` with `pwsh.exe`. If Windows marks the downloaded script as blocked, review it and run `Unblock-File -LiteralPath .\ControlFogPatch.ps1` before running the install command. If your game folder requires administrator write access, use an administrator PowerShell window.
+Advanced users can run the script directly. Replace the example path with the folder that contains `Control_DX11.exe`.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\ControlFogPatch.ps1 -GameFolder "D:\Games\Control"
+```
+
+PowerShell 7 users can replace `powershell.exe` with `pwsh.exe`. If the game folder requires administrator write access, run the launcher or PowerShell window as administrator.
+
+## Unsupported shader message
+
+The patch only changes shader files that exactly match a tested version. If the installer says a shader does not match, it safely stops without changing any files. First verify Control's files in Steam, Epic, or GOG and remove any other shader mods. If the error remains, that game build is not supported yet. Open a GitHub issue and include the shader names and SHA-256 hashes printed by the installer; do not upload copyrighted game files.
 
 ## Check or restore
 

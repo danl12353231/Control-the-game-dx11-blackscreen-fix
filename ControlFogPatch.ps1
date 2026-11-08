@@ -10,6 +10,53 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+trap {
+    Write-Host ''
+    Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
+
+function Test-ControlGameFolder {
+    param([string] $Path)
+
+    return (-not [string]::IsNullOrWhiteSpace($Path)) -and
+        (Test-Path -LiteralPath (Join-Path $Path 'Control_DX11.exe') -PathType Leaf)
+}
+
+function Select-ControlGameFolder {
+    $candidates = @(
+        (Get-Location).Path,
+        $PSScriptRoot,
+        (Join-Path ${env:ProgramFiles(x86)} 'Steam\steamapps\common\Control'),
+        (Join-Path $env:ProgramFiles 'Steam\steamapps\common\Control'),
+        (Join-Path $env:ProgramFiles 'Epic Games\Control'),
+        (Join-Path $env:ProgramFiles 'GOG Galaxy\Games\Control')
+    ) | Where-Object { Test-ControlGameFolder $_ } | Select-Object -Unique
+
+    if (@($candidates).Count -eq 1) {
+        Write-Host "Found Control at: $($candidates[0])"
+        return $candidates[0]
+    }
+
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        $picker = [Windows.Forms.FolderBrowserDialog]::new()
+        try {
+            $picker.Description = 'Select the Control game folder (the folder containing Control_DX11.exe).'
+            $picker.ShowNewFolderButton = $false
+            if ($picker.ShowDialog() -eq [Windows.Forms.DialogResult]::OK) {
+                return $picker.SelectedPath
+            }
+        } finally {
+            $picker.Dispose()
+        }
+    } catch {
+        # Fall back to a text prompt if the Windows folder picker is unavailable.
+    }
+
+    return Read-Host 'Enter the folder containing Control_DX11.exe'
+}
+
 function Get-ByteHash {
     param([byte[]] $Bytes)
 
@@ -79,11 +126,7 @@ function Replace-ShaderFile {
 }
 
 if (-not $GameFolder) {
-    if (Test-Path -LiteralPath (Join-Path (Get-Location).Path 'Control_DX11.exe') -PathType Leaf) {
-        $GameFolder = (Get-Location).Path
-    } else {
-        $GameFolder = Read-Host 'Enter the folder containing Control_DX11.exe'
-    }
+    $GameFolder = Select-ControlGameFolder
 }
 if ([string]::IsNullOrWhiteSpace($GameFolder)) {
     throw 'Enter the Control installation folder or pass -GameFolder.'
@@ -136,7 +179,7 @@ try {
             $state = 'patched'
         } else {
             $state = 'unrecognized'
-            $issues.Add("Unsupported or modified shader $($entry.name) has SHA-256 $beforeHash.")
+            $issues.Add("$($entry.name) does not match the supported version (SHA-256: $beforeHash).")
         }
         Write-Host "$($entry.name) - $state"
 
@@ -187,7 +230,15 @@ try {
     }
 
     if ($issues.Count) {
-        throw ($issues -join [Environment]::NewLine)
+        $details = $issues -join [Environment]::NewLine
+        throw @"
+No files were changed because this copy of Control is not compatible with the patch.
+
+$details
+
+This patch currently supports Control_DX11.exe version 0.0.517.915. This message usually means the game is a different build or another shader mod changed the files. Verify the game files in Steam, Epic, or GOG, remove other shader mods, and try again. If the message remains, your build is not supported yet. Include the hashes above when reporting it at:
+https://github.com/danl12353231/Control-the-game-dx11-blackscreen-fix/issues
+"@
     }
     if ($Action -eq 'Status') {
         return
